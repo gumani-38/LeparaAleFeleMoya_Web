@@ -16,34 +16,25 @@ const navItems = [
 function App() {
   const { admin, isLoading, request, signOut, backupCodes } = useAdminAuth()
   const [dashboard, setDashboard] = useState<AdminDashboardResponse | null>(null)
-  const [products, setProducts] = useState<AdminProduct[] | null>(null)
   const [orders, setOrders] = useState<AdminOrder[] | null>(null)
-  const [dataForAdmin, setDataForAdmin] = useState<number | null>(null)
-  const [dataError, setDataError] = useState<string | null>(null)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
+  const [ordersError, setOrdersError] = useState<string | null>(null)
   const [signOutError, setSignOutError] = useState<string | null>(null)
 
   useEffect(() => {
     let ignore = false
     if (!admin) return
-    setDataError(null)
+    setDashboard(null)
+    setOrders(null)
+    setDashboardError(null)
+    setOrdersError(null)
 
-    Promise.all([
-      adminApi.getDashboard(request),
-      adminApi.getProducts(request),
-      adminApi.getOrders(request),
-    ])
-      .then(([dashboardResult, productsResult, ordersResult]) => {
-        if (!ignore) {
-          setDashboard(dashboardResult)
-          setProducts(productsResult)
-          setOrders(ordersResult)
-          setDataForAdmin(admin.adminId)
-          setDataError(null)
-        }
-      })
-      .catch((error: Error) => {
-        if (!ignore) setDataError(error.message)
-      })
+    adminApi.getDashboard(request)
+      .then((result) => { if (!ignore) setDashboard(result) })
+      .catch((error: Error) => { if (!ignore) setDashboardError(error.message) })
+    adminApi.getOrders(request)
+      .then((result) => { if (!ignore) setOrders(result) })
+      .catch((error: Error) => { if (!ignore) setOrdersError(error.message) })
 
     return () => {
       ignore = true
@@ -59,18 +50,6 @@ function App() {
   if (admin.mustChangePassword) {
     return <AdminPasswordChangePage />
   }
-  if (dataForAdmin !== admin.adminId || !dashboard || !products || !orders) {
-    return <StandaloneState title={dataError ? 'Unable to load admin data.' : 'Loading admin data...'} description={dataError ?? 'Fetching the dashboard, products, and orders from the API.'} />
-  }
-
-  const orderRows = orders.map((order) => [
-    order.orderNumber,
-    order.customer.name,
-    new Date(order.placedAt).toLocaleDateString(),
-    `${order.itemCount} / ${order.total}`,
-    order.paymentStatus,
-    order.statusLabel,
-  ])
 
   return (
     <div className="app-shell">
@@ -103,9 +82,9 @@ function App() {
           {backupCodes.length > 0 ? <div className="card backup-codes"><h2>Save your backup codes</h2><p>These are shown once. Store them somewhere safe.</p><p>{backupCodes.join(' · ')}</p></div> : null}
           <Routes>
             <Route path="/" element={<Navigate to="/overview" replace />} />
-            <Route path="/overview" element={<OverviewPage dashboard={dashboard} orders={orders} />} />
-            <Route path="/products" element={<ProductsPage request={request} initialProducts={products} />} />
-            <Route path="/orders" element={<TablePage title="Every order, accounted for." description="Orders and payment statuses retrieved from the API." buttonLabel="Orders" columns={['Order', 'Customer', 'Placed', 'Items / Total', 'Payment', 'Fulfillment']} rows={orderRows} />} />
+            <Route path="/overview" element={dashboard && orders ? <OverviewPage dashboard={dashboard} orders={orders} /> : <StandaloneState title={dashboardError || ordersError ? 'Unable to load dashboard data.' : 'Loading dashboard...'} description={dashboardError ?? ordersError ?? 'Fetching dashboard and order data from the API.'} />} />
+            <Route path="/products" element={<ProductsPage request={request} />} />
+            <Route path="/orders" element={orders ? <TablePage title="Every order, accounted for." description="Orders and payment statuses retrieved from the API." buttonLabel="Orders" columns={['Order', 'Customer', 'Placed', 'Items / Total', 'Payment', 'Fulfillment']} rows={orders.map((order) => [order.orderNumber, order.customer.name, new Date(order.placedAt).toLocaleDateString(), `${order.itemCount} / ${order.total}`, order.paymentStatus, order.statusLabel])} /> : <StandaloneState title={ordersError ? 'Unable to load orders.' : 'Loading orders...'} description={ordersError ?? 'Fetching order data from the API.'} />} />
             <Route path="/donations" element={<SimplePage title="Coordinate every contribution." description="Review donation descriptions and their associated event or task." buttonLabel="Export records" />} />
             <Route path="/volunteers" element={<SimplePage title="Put willing hands to good work." description="Review offers of time, confirm availability and assign meaningful tasks." buttonLabel="Export volunteers" />} />
             <Route path="/tasks" element={<SimplePage title="Turn plans into shared action." description="Assign responsibilities, set due dates and keep event preparation moving." buttonLabel="+ Create task" />} />
@@ -143,8 +122,8 @@ const emptyProductDraft: ProductDraft = {
   variantStock: '0',
 }
 
-function ProductsPage({ request, initialProducts }: { request: AdminRequester; initialProducts: AdminProduct[] }) {
-  const [products, setProducts] = useState(initialProducts)
+function ProductsPage({ request }: { request: AdminRequester }) {
+  const [products, setProducts] = useState<AdminProduct[]>([])
   const [categories, setCategories] = useState<AdminProductCategory[]>([])
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -154,6 +133,7 @@ function ProductsPage({ request, initialProducts }: { request: AdminRequester; i
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   async function refreshProducts() {
     setProducts(await adminApi.getProducts(request))
@@ -161,6 +141,10 @@ function ProductsPage({ request, initialProducts }: { request: AdminRequester; i
 
   useEffect(() => {
     let ignore = false
+    adminApi.getProducts(request)
+      .then((result) => { if (!ignore) setProducts(result) })
+      .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
+      .finally(() => { if (!ignore) setIsLoading(false) })
     adminApi.getProductCategories(request)
       .then((result) => { if (!ignore) setCategories(result) })
       .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
@@ -245,10 +229,11 @@ function ProductsPage({ request, initialProducts }: { request: AdminRequester; i
   async function toggleProduct(product: AdminProduct) {
     setError(null)
     setMessage(null)
+    if (product.isActive && !window.confirm(`Hide "${product.name}" from the shop? You can show it again later.`)) return
     try {
       await adminApi.updateProduct(request, product.productId, { isActive: !product.isActive })
       await refreshProducts()
-      setMessage(`${product.name} is now ${product.isActive ? 'hidden' : 'active'}.`)
+      setMessage(product.isActive ? `${product.name} is now hidden from the shop.` : `${product.name} is now visible in the shop.`)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to update product visibility.')
     }
@@ -300,8 +285,8 @@ function ProductsPage({ request, initialProducts }: { request: AdminRequester; i
   return (
     <PageFrame title="The collection." description="Create, update, photograph and manage products and stock from the shop API." buttonLabel="Products">
       <div className="management-toolbar">
-        <p className="muted-copy">{products.length} products in the catalogue. Products are archived by hiding them from the shop.</p>
-        <button className="primary-button" type="button" onClick={startCreate}>+ Add product</button>
+        <p className="muted-copy">{products.length} products in the catalogue. Archiving hides a product from the shop while keeping its order history.</p>
+        <button className="primary-button" type="button" onClick={startCreate} disabled={categories.length === 0}>+ Add product</button>
       </div>
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
       {message ? <p className="success-message" role="status">{message}</p> : null}
@@ -352,7 +337,7 @@ function ProductsPage({ request, initialProducts }: { request: AdminRequester; i
         </Card>
       ) : null}
       <Card title="Products">
-        <div className="data-table-wrap">
+        {isLoading ? <p>Loading products...</p> : products.length === 0 ? <p>No products found in the catalogue yet.</p> : <div className="data-table-wrap">
           <table className="data-table">
             <thead><tr><th>Product</th><th>Price</th><th>Sizes</th><th>Stock</th><th>Visibility</th><th>Manage</th></tr></thead>
             <tbody>{products.map((product) => (
@@ -366,7 +351,7 @@ function ProductsPage({ request, initialProducts }: { request: AdminRequester; i
               </tr>
             ))}</tbody>
           </table>
-        </div>
+        </div>}
       </Card>
     </PageFrame>
   )
