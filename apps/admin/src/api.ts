@@ -74,6 +74,13 @@ export type AdminInitiative = {
   applicationCount: number
 }
 
+export type AdminInitiativeTask = {
+  taskId: number
+  name: string
+  volunteersNeeded: number | null
+  applicationCount: number
+}
+
 export type AdminInitiativeType = {
   typeId: number
   name: string
@@ -93,6 +100,36 @@ export type AdminOrder = {
   placedAt: string
 }
 
+export type AdminDonationPledge = {
+  pledgeId: number
+  referenceNumber: string
+  status: string
+  fullName: string
+  email: string
+  phone: string
+  category: string
+  description: string
+  estimatedValue: string | null
+  initiative: { initiativeId: number; title: string } | null
+  submittedAt: string
+}
+
+export type AdminVolunteerApplication = {
+  applicationId: number
+  referenceNumber: string
+  status: string
+  fullName: string
+  phone: string
+  email: string | null
+  contribution: string
+  availability: string
+  submittedAt: string
+  initiative: { initiativeId: number; title: string } | null
+  task: { taskId: number; name: string } | null
+}
+
+export const ADMIN_LIST_PAGE_SIZE = 50
+
 export const adminApiRoutes = {
   dashboard: '/admin/dashboard',
   products: '/admin/products?page=1&pageSize=100&status=all',
@@ -100,8 +137,9 @@ export const adminApiRoutes = {
   productCategories: '/admin/product-categories',
   orders: '/admin/orders?page=1&pageSize=50',
   donations: '/admin/donations',
+  donationPledges: '/admin/donation-pledges',
   volunteers: '/admin/volunteer-applications',
-  events: '/admin/initiatives?page=1&pageSize=100&status=all',
+  events: '/admin/initiatives?page=1&pageSize=50&status=all',
   initiativeTypes: '/admin/initiative-types',
 } as const
 
@@ -131,10 +169,28 @@ export const adminApi = {
     const reply = await request<AdminOrder[] | { items: AdminOrder[] }>(adminApiRoutes.orders)
     return Array.isArray(reply) ? reply : reply.items
   },
+  getDonationPledges: async (request: AdminRequester, page: number) => {
+    const route = `${adminApiRoutes.donationPledges}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest`
+    const reply = await request<AdminDonationPledge[] | { items: AdminDonationPledge[] }>(route)
+    return Array.isArray(reply) ? reply : reply.items
+  },
+  getVolunteerApplications: async (request: AdminRequester, page: number) => {
+    const route = `${adminApiRoutes.volunteers}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest`
+    const reply = await request<AdminVolunteerApplication[] | { items: AdminVolunteerApplication[] }>(route)
+    return Array.isArray(reply) ? reply : reply.items
+  },
   getInitiatives: async (request: AdminRequester) => {
     const reply = await request<AdminInitiative[] | { items: AdminInitiative[] }>(adminApiRoutes.events)
     return Array.isArray(reply) ? reply : reply.items
   },
+  getInitiativeTasks: (request: AdminRequester, initiativeId: number) =>
+    request<AdminInitiativeTask[]>(`/admin/initiatives/${initiativeId}/tasks`),
+  createInitiativeTask: (request: AdminRequester, initiativeId: number, body: Pick<AdminInitiativeTask, 'name' | 'volunteersNeeded'>) =>
+    request<AdminInitiativeTask>(`/admin/initiatives/${initiativeId}/tasks`, { method: 'POST', body }),
+  updateInitiativeTask: (request: AdminRequester, initiativeId: number, taskId: number, body: Pick<AdminInitiativeTask, 'name' | 'volunteersNeeded'>) =>
+    request<AdminInitiativeTask>(`/admin/initiatives/${initiativeId}/tasks/${taskId}`, { method: 'PATCH', body }),
+  deleteInitiativeTask: (request: AdminRequester, initiativeId: number, taskId: number) =>
+    request<{ deleted: boolean }>(`/admin/initiatives/${initiativeId}/tasks/${taskId}`, { method: 'DELETE' }),
   getInitiative: (request: AdminRequester, id: number) => request<AdminInitiative>(`/admin/initiatives/${id}`),
   getInitiativeTypes: (request: AdminRequester) => request<AdminInitiativeType[]>(adminApiRoutes.initiativeTypes),
   createInitiative: (request: AdminRequester, body: Record<string, unknown>) =>
