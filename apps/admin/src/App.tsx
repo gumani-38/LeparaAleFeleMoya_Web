@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { ADMIN_LIST_PAGE_SIZE, AdminDashboardResponse, AdminDonationPledge, AdminInitiative, AdminInitiativeTask, AdminInitiativeType, AdminOrder, AdminProduct, AdminProductCategory, AdminProductVariant, AdminRequester, AdminVolunteerApplication, adminApi } from './api'
+import { ADMIN_LIST_PAGE_SIZE, AdminDashboardResponse, AdminDonationPledge, AdminInitiative, AdminInitiativeTask, AdminInitiativeType, AdminOrder, AdminOrderStatus, AdminProduct, AdminProductCategory, AdminProductVariant, AdminRequester, AdminVolunteerApplication, adminApi } from './api'
 import { useAdminAuth } from './AuthContext'
 
 const navItems = [
@@ -99,7 +99,7 @@ function App() {
             <Route path="/" element={<Navigate to="/overview" replace />} />
             <Route path="/overview" element={dashboard && orders ? <OverviewPage dashboard={dashboard} orders={orders} request={request} /> : <StandaloneState title={dashboardError || ordersError ? 'Unable to load dashboard data.' : 'Loading dashboard...'} description={dashboardError ?? ordersError ?? 'Fetching dashboard and order data from the API.'} />} />
             <Route path="/products" element={<ProductsPage request={request} />} />
-            <Route path="/orders" element={orders ? <TablePage title="Every order, accounted for." description="Orders and payment statuses retrieved from the API." buttonLabel="Orders" columns={['Order', 'Customer', 'Placed', 'Items / Total', 'Payment', 'Fulfillment']} rows={orders.map((order) => [order.orderNumber, order.customer.name, new Date(order.placedAt).toLocaleDateString(), `${order.itemCount} / ${order.total}`, order.paymentStatus, order.statusLabel])} /> : <StandaloneState title={ordersError ? 'Unable to load orders.' : 'Loading orders...'} description={ordersError ?? 'Fetching order data from the API.'} />} />
+            <Route path="/orders" element={orders ? <OrdersPage orders={orders} request={request} onOrderUpdated={(updatedOrder) => setOrders((current) => current?.map((order) => order.orderId === updatedOrder.orderId ? updatedOrder : order) ?? null)} /> : <StandaloneState title={ordersError ? 'Unable to load orders.' : 'Loading orders...'} description={ordersError ?? 'Fetching order data from the API.'} />} />
             <Route path="/donations" element={<DonationPledgesPage request={request} />} />
             <Route path="/volunteers" element={<VolunteerApplicationsPage request={request} />} />
             <Route path="/tasks" element={<TasksPage request={request} />} />
@@ -810,6 +810,117 @@ function TablePage({ title, description, buttonLabel, columns, rows }: { title: 
     <PageFrame title={title} description={description} buttonLabel={buttonLabel}>
       <Card>
         <DataTable columns={columns} rows={rows} />
+      </Card>
+    </PageFrame>
+  )
+}
+
+function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[]; request: AdminRequester; onOrderUpdated: (order: AdminOrder) => void }) {
+  const [activeOrderId, setActiveOrderId] = useState<number | null>(null)
+  const [activeAction, setActiveAction] = useState<'ship' | 'cancel' | null>(null)
+  const [courierReference, setCourierReference] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
+  const [refunded, setRefunded] = useState(false)
+  const [savingOrderId, setSavingOrderId] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  function openOrderAction(orderId: number, action: 'ship' | 'cancel') {
+    setActiveOrderId(orderId)
+    setActiveAction(action)
+    setCourierReference('')
+    setCancelReason('')
+    setRefunded(false)
+    setError(null)
+    setMessage(null)
+  }
+
+  async function changeOrderStatus(order: AdminOrder, status: AdminOrderStatus) {
+    const body = status === 'Shipped'
+      ? { status, courierReference: courierReference.trim() }
+      : status === 'Cancelled'
+        ? { status, reason: cancelReason.trim(), ...(order.paymentStatus === 'Paid' ? { refunded } : {}) }
+        : { status }
+
+    setSavingOrderId(order.orderId)
+    setError(null)
+    setMessage(null)
+    try {
+      const updatedOrder = await adminApi.updateOrderStatus(request, order.orderId, body)
+      onOrderUpdated(updatedOrder)
+      setActiveOrderId(null)
+      setActiveAction(null)
+      setMessage(`Order ${order.orderNumber} is now ${updatedOrder.statusLabel}.`)
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to update order status.')
+    } finally {
+      setSavingOrderId(null)
+    }
+  }
+
+  function nextStatus(status: AdminOrderStatus): { label: string; status: AdminOrderStatus } | null {
+    if (status === 'Confirmed') return { label: 'Mark packed', status: 'Packed' }
+    if (status === 'Packed') return { label: 'Mark shipped', status: 'Shipped' }
+    if (status === 'Shipped') return { label: 'Mark delivered', status: 'Delivered' }
+    return null
+  }
+
+  return (
+    <PageFrame title="Every order, accounted for." description="Update fulfillment one step at a time. Payment status is managed separately." buttonLabel="Orders">
+      {error ? <p className="auth-error" role="alert">{error}</p> : null}
+      {message ? <p className="success-message" role="status">{message}</p> : null}
+      <Card>
+        {orders.length === 0 ? <p>No orders to display.</p> : (
+          <div className="data-table-wrap">
+            <table className="data-table orders-table">
+              <thead>
+                <tr>
+                  {['Order', 'Customer', 'Placed', 'Items / Total', 'Payment', 'Fulfillment', 'Actions'].map((column) => <th key={column}>{column}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => {
+                  const action = nextStatus(order.status)
+                  const canCancel = ['Pending payment', 'Confirmed', 'Packed'].includes(order.status)
+                  const isActive = activeOrderId === order.orderId
+                  const isSaving = savingOrderId === order.orderId
+                  return (
+                    <tr key={order.orderId}>
+                      <td>{order.orderNumber}</td>
+                      <td>{order.customer.name}</td>
+                      <td>{new Date(order.placedAt).toLocaleDateString()}</td>
+                      <td>{order.itemCount} / {order.total}</td>
+                      <td>{order.paymentStatus}</td>
+                      <td>
+                        <span className="tag">{order.statusLabel}</span>
+                        {order.courierReference ? <div className="muted-copy">Tracking: {order.courierReference}</div> : null}
+                      </td>
+                      <td>
+                        <div className="row-controls">
+                          {!isActive && action ? <button className="table-action" type="button" disabled={savingOrderId !== null} onClick={() => action.status === 'Shipped' ? openOrderAction(order.orderId, 'ship') : void changeOrderStatus(order, action.status)}>{action.label}</button> : null}
+                          {!isActive && canCancel ? <button className="table-action" type="button" disabled={savingOrderId !== null} onClick={() => openOrderAction(order.orderId, 'cancel')}>Cancel</button> : null}
+                          {isActive && activeAction === 'ship' ? (
+                            <form className="order-status-form" onSubmit={(event) => { event.preventDefault(); void changeOrderStatus(order, 'Shipped') }}>
+                              <label>Courier reference<input autoComplete="off" maxLength={60} minLength={3} onChange={(event) => setCourierReference(event.target.value)} required value={courierReference} /></label>
+                              <div className="row-controls"><button className="table-action" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Confirm shipment'}</button><button className="table-action" type="button" disabled={isSaving} onClick={() => { setActiveOrderId(null); setActiveAction(null) }}>Close</button></div>
+                            </form>
+                          ) : null}
+                          {isActive && activeAction === 'cancel' ? (
+                            <form className="order-status-form" onSubmit={(event) => { event.preventDefault(); void changeOrderStatus(order, 'Cancelled') }}>
+                              <label>Reason sent to customer<textarea maxLength={500} minLength={3} onChange={(event) => setCancelReason(event.target.value)} required rows={2} value={cancelReason} /></label>
+                              {order.paymentStatus === 'Paid' ? <label className="check-field"><input checked={refunded} onChange={(event) => setRefunded(event.target.checked)} required type="checkbox" /> Confirm that the payment was refunded</label> : null}
+                              <div className="row-controls"><button className="table-action" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Confirm cancellation'}</button><button className="table-action" type="button" disabled={isSaving} onClick={() => { setActiveOrderId(null); setActiveAction(null) }}>Close</button></div>
+                            </form>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </PageFrame>
   )

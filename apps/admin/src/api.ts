@@ -91,13 +91,30 @@ export type AdminInitiativeType = {
 export type AdminOrder = {
   orderId: number
   orderNumber: string
+  status: AdminOrderStatus
   statusLabel: string
   paymentMethodLabel: string
   paymentStatus: string
   customer: { name: string; email: string }
   itemCount: number
   total: string
+  courierReference: string | null
   placedAt: string
+}
+
+export type AdminOrderStatus =
+  | 'Pending payment'
+  | 'Confirmed'
+  | 'Packed'
+  | 'Shipped'
+  | 'Delivered'
+  | 'Cancelled'
+
+export type AdminOrderStatusUpdate = {
+  status: AdminOrderStatus
+  courierReference?: string
+  reason?: string
+  refunded?: boolean
 }
 
 export type AdminDonationPledge = {
@@ -169,6 +186,8 @@ export const adminApi = {
     const reply = await request<AdminOrder[] | { items: AdminOrder[] }>(adminApiRoutes.orders)
     return Array.isArray(reply) ? reply : reply.items
   },
+  updateOrderStatus: (request: AdminRequester, id: number, body: AdminOrderStatusUpdate) =>
+    request<AdminOrder>(`/admin/orders/${id}/status`, { method: 'PATCH', body }),
   getDonationPledges: async (request: AdminRequester, page: number) => {
     const route = `${adminApiRoutes.donationPledges}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest`
     const reply = await request<AdminDonationPledge[] | { items: AdminDonationPledge[] }>(route)

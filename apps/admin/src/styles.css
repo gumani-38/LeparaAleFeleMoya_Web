@@ -92,6 +92,10 @@ button { cursor: pointer; }
 .table-action { border: 1px solid #ded9d1; border-radius: 7px; background: #fff; color: #171717; padding: 0.45rem 0.65rem; }
 .table-action:hover:not(:disabled), .secondary-button:hover { background: #f0ece5; }
 .table-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.order-status-form { display: grid; min-width: 230px; gap: 0.65rem; margin-top: 0.65rem; }
+.order-status-form label { display: grid; gap: 0.35rem; font-size: 0.82rem; font-weight: 700; }
+.order-status-form input:not([type="checkbox"]), .order-status-form textarea { width: 100%; padding: 0.6rem; border: 1px solid #ded9d1; border-radius: 7px; background: #fff; color: #171717; }
+.order-status-form .check-field { display: flex; align-items: center; gap: 0.5rem; }
 .secondary-button { border: 1px solid #ded9d1; border-radius: 8px; background: #fff; color: #171717; padding: 0.85rem 1rem; }
 .table-pagination { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(0, 0, 0, 0.08); }
 .pagination-button { min-width: 100px; padding: 0.65rem 0.9rem; font-weight: 700; }
