@@ -132,9 +132,37 @@ export type AdminDonationPledge = {
   phone: string
   category: string
   description: string
+  estimatedValueCents?: number | null
   estimatedValue: string | null
   initiative: { initiativeId: number; title: string } | null
   submittedAt: string
+}
+
+export type AdminStockItem = {
+  stockItemId: number
+  name: string
+  category: string
+  unit: string
+  quantityOnHand: number
+  reorderLevel: number
+}
+
+export type AdminDonationPledgeStatusUpdate = {
+  status: 'Accepted' | 'Declined'
+  reason?: string
+}
+
+export type AdminDonationPledgeReceiveUpdate = {
+  type: 'Monetary'
+  amount: number
+  receiptReference?: string
+  dateReceived?: string
+} | {
+  type: 'Goods'
+  stockItemId: number
+  quantity: number
+  receiptReference?: string
+  dateReceived?: string
 }
 
 export type AdminVolunteerApplication = {
@@ -155,7 +183,7 @@ export const ADMIN_LIST_PAGE_SIZE = 50
 
 export const adminApiRoutes = {
   dashboard: '/admin/dashboard',
-  products: '/admin/products?page=1&pageSize=100&status=all',
+  products: '/admin/products?page=1&pageSize=50&status=all',
   productCollection: '/admin/products',
   productCategories: '/admin/product-categories',
   orders: '/admin/orders?page=1&pageSize=50',
@@ -163,14 +191,18 @@ export const adminApiRoutes = {
   donationPledges: '/admin/donation-pledges',
   volunteers: '/admin/volunteer-applications',
   events: '/admin/initiatives?page=1&pageSize=50&status=all',
+  stockItems: '/admin/stock-items?page=1&pageSize=50&sort=name',
   initiativeTypes: '/admin/initiative-types',
 } as const
 
 export const adminApi = {
   routes: adminApiRoutes,
   getDashboard: (request: AdminRequester) => request<AdminDashboardResponse>(adminApiRoutes.dashboard),
-  getProducts: async (request: AdminRequester) => {
-    const reply = await request<AdminProduct[] | { items: AdminProduct[] }>(adminApiRoutes.products)
+  getProducts: async (request: AdminRequester, search = '', page = 1) => {
+    const searchParam = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+    const reply = await request<AdminProduct[] | { items: AdminProduct[] }>(
+      `/admin/products?status=all&page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}${searchParam}`,
+    )
     return Array.isArray(reply) ? reply : reply.items
   },
   getProduct: (request: AdminRequester, id: number) => request<AdminProduct>(`/admin/products/${id}`),
@@ -188,26 +220,42 @@ export const adminApi = {
     request<AdminProductVariant>(`/admin/products/${id}/variants`, { method: 'POST', body }),
   updateProductVariant: (request: AdminRequester, id: number, variantId: number, body: Record<string, unknown>) =>
     request<AdminProductVariant>(`/admin/products/${id}/variants/${variantId}`, { method: 'PATCH', body }),
-  getOrders: async (request: AdminRequester) => {
-    const reply = await request<AdminOrder[] | { items: AdminOrder[] }>(adminApiRoutes.orders)
+  getOrders: async (request: AdminRequester, page = 1, search = '') => {
+    const searchParam = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+    const reply = await request<AdminOrder[] | { items: AdminOrder[] }>(
+      `/admin/orders?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}${searchParam}`,
+    )
     return Array.isArray(reply) ? reply : reply.items
   },
   updateOrderStatus: (request: AdminRequester, id: number, body: AdminOrderStatusUpdate) =>
     request<AdminOrder>(`/admin/orders/${id}/status`, { method: 'PATCH', body }),
   recordOrderPayment: (request: AdminRequester, id: number, body: AdminOrderPaymentUpdate) =>
     request<AdminOrder>(`/admin/orders/${id}/payment`, { method: 'PATCH', body }),
-  getDonationPledges: async (request: AdminRequester, page: number) => {
-    const route = `${adminApiRoutes.donationPledges}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest`
+  getDonationPledges: async (request: AdminRequester, page: number, search = '') => {
+    const searchParam = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+    const route = `${adminApiRoutes.donationPledges}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest${searchParam}`
     const reply = await request<AdminDonationPledge[] | { items: AdminDonationPledge[] }>(route)
     return Array.isArray(reply) ? reply : reply.items
   },
-  getVolunteerApplications: async (request: AdminRequester, page: number) => {
-    const route = `${adminApiRoutes.volunteers}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest`
+  updateDonationPledgeStatus: (request: AdminRequester, id: number, body: AdminDonationPledgeStatusUpdate) =>
+    request<AdminDonationPledge>(`/admin/donation-pledges/${id}/status`, { method: 'PATCH', body }),
+  receiveDonationPledge: (request: AdminRequester, id: number, body: AdminDonationPledgeReceiveUpdate) =>
+    request<{ pledge: AdminDonationPledge }>(`/admin/donation-pledges/${id}/receive`, { method: 'POST', body }),
+  getStockItems: async (request: AdminRequester) => {
+    const reply = await request<AdminStockItem[] | { items: AdminStockItem[] }>(adminApiRoutes.stockItems)
+    return Array.isArray(reply) ? reply : reply.items
+  },
+  getVolunteerApplications: async (request: AdminRequester, page: number, search = '') => {
+    const searchParam = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+    const route = `${adminApiRoutes.volunteers}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest${searchParam}`
     const reply = await request<AdminVolunteerApplication[] | { items: AdminVolunteerApplication[] }>(route)
     return Array.isArray(reply) ? reply : reply.items
   },
-  getInitiatives: async (request: AdminRequester) => {
-    const reply = await request<AdminInitiative[] | { items: AdminInitiative[] }>(adminApiRoutes.events)
+  getInitiatives: async (request: AdminRequester, search = '', page = 1) => {
+    const searchParam = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
+    const reply = await request<AdminInitiative[] | { items: AdminInitiative[] }>(
+      `/admin/initiatives?status=all&page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}${searchParam}`,
+    )
     return Array.isArray(reply) ? reply : reply.items
   },
   getInitiativeTasks: (request: AdminRequester, initiativeId: number) =>

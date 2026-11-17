@@ -1,8 +1,19 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { apiErrorMessage } from '../../../shared/api-client'
-import { ADMIN_LIST_PAGE_SIZE, AdminDashboardResponse, AdminDonationPledge, AdminInitiative, AdminInitiativeTask, AdminInitiativeType, AdminOrder, AdminOrderStatus, AdminProduct, AdminProductCategory, AdminProductVariant, AdminRequester, AdminVolunteerApplication, adminApi } from './api'
+import { ADMIN_LIST_PAGE_SIZE, AdminDashboardResponse, AdminDonationPledge, AdminDonationPledgeReceiveUpdate, AdminDonationPledgeStatusUpdate, AdminInitiative, AdminInitiativeTask, AdminInitiativeType, AdminOrder, AdminOrderStatus, AdminProduct, AdminProductCategory, AdminProductVariant, AdminRequester, AdminStockItem, AdminVolunteerApplication, adminApi } from './api'
 import { useAdminAuth } from './AuthContext'
+
+function useDebouncedValue<T>(value: T, delay = 250): T {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [delay, value])
+
+  return debouncedValue
+}
 
 const navItems = [
   { label: 'Overview', path: '/overview' },
@@ -150,17 +161,27 @@ function ProductsPage({ request }: { request: AdminRequester }) {
   const [message, setMessage] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
+  const [page, setPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
 
   async function refreshProducts() {
-    setProducts(await adminApi.getProducts(request))
+    setProducts(await adminApi.getProducts(request, debouncedSearch, page))
   }
 
   useEffect(() => {
     let ignore = false
-    adminApi.getProducts(request)
-      .then((result) => { if (!ignore) setProducts(result) })
+    setIsLoading(true)
+    adminApi.getProducts(request, debouncedSearch, page)
+      .then((result) => { if (!ignore) { setProducts(result); setHasNextPage(result.length === ADMIN_LIST_PAGE_SIZE); setError(null) } })
       .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
       .finally(() => { if (!ignore) setIsLoading(false) })
+    return () => { ignore = true }
+  }, [debouncedSearch, page, request])
+
+  useEffect(() => {
+    let ignore = false
     adminApi.getProductCategories(request)
       .then((result) => { if (!ignore) setCategories(result) })
       .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
@@ -301,7 +322,8 @@ function ProductsPage({ request }: { request: AdminRequester }) {
   return (
     <PageFrame title="The collection." description="Create, update, photograph and manage products and stock from the shop API." buttonLabel="Products">
       <div className="management-toolbar">
-        <p className="muted-copy">{products.length} products in the catalogue. Archiving hides a product from the shop while keeping its order history.</p>
+        <SearchField label="Search products" value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Name, colour, material or category" />
+        <p className="muted-copy">{products.length} products shown. Archiving hides a product from the shop while keeping its order history.</p>
         <button className="primary-button" type="button" onClick={startCreate} disabled={categories.length === 0}>+ Add product</button>
       </div>
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
@@ -353,7 +375,7 @@ function ProductsPage({ request }: { request: AdminRequester }) {
         </Card>
       ) : null}
       <Card title="Products">
-        {isLoading ? <p>Loading products...</p> : products.length === 0 ? <p>No products found in the catalogue yet.</p> : <div className="data-table-wrap">
+        {isLoading ? <p>Loading products...</p> : products.length === 0 ? <p>{debouncedSearch ? `No products match “${debouncedSearch}”.` : 'No products found in the catalogue yet.'}</p> : <div className="data-table-wrap">
           <table className="data-table">
             <thead><tr><th>Product</th><th>Price</th><th>Sizes</th><th>Stock</th><th>Visibility</th><th>Manage</th></tr></thead>
             <tbody>{products.map((product) => (
@@ -369,6 +391,9 @@ function ProductsPage({ request }: { request: AdminRequester }) {
           </table>
         </div>}
       </Card>
+      {!error && !isLoading && (products.length > 0 || page > 1) ? (
+        <TablePagination page={page} itemCount={products.length} isLoading={isLoading} hasNextPage={hasNextPage} onPageChange={setPage} label="Product pages" />
+      ) : null}
     </PageFrame>
   )
 }
@@ -412,23 +437,30 @@ function EventsPage({ request }: { request: AdminRequester }) {
   const [message, setMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
+  const [page, setPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
 
   async function refreshEvents() {
-    setEvents(await adminApi.getInitiatives(request))
+    setEvents(await adminApi.getInitiatives(request, debouncedSearch, page))
   }
 
   useEffect(() => {
     let ignore = false
-    Promise.all([adminApi.getInitiatives(request), adminApi.getInitiativeTypes(request)])
-      .then(([eventResult, typeResult]) => {
-        if (!ignore) {
-          setEvents(eventResult)
-          setTypes(typeResult)
-          setError(null)
-        }
-      })
+    setIsLoading(true)
+    adminApi.getInitiatives(request, debouncedSearch, page)
+      .then((eventResult) => { if (!ignore) { setEvents(eventResult); setHasNextPage(eventResult.length === ADMIN_LIST_PAGE_SIZE); setError(null) } })
       .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
       .finally(() => { if (!ignore) setIsLoading(false) })
+    return () => { ignore = true }
+  }, [debouncedSearch, page, request])
+
+  useEffect(() => {
+    let ignore = false
+    adminApi.getInitiativeTypes(request)
+      .then((typeResult) => { if (!ignore) setTypes(typeResult) })
+      .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
     return () => { ignore = true }
   }, [request])
 
@@ -535,7 +567,7 @@ function EventsPage({ request }: { request: AdminRequester }) {
 
   return (
     <PageFrame title="Make space for community." description="Create events, upload photos, edit details and manage draft-to-published status." buttonLabel="Events">
-      <div className="management-toolbar"><p className="muted-copy">{events.length} initiatives from the API.</p><button className="primary-button" type="button" onClick={startNew}>+ Create event</button></div>
+      <div className="management-toolbar"><SearchField label="Search events" value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Title or location" /><p className="muted-copy">{events.length} events shown.</p><button className="primary-button" type="button" onClick={startNew}>+ Create event</button></div>
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
       {message ? <p className="success-message" role="status">{message}</p> : null}
       {editorOpen ? (
@@ -561,7 +593,7 @@ function EventsPage({ request }: { request: AdminRequester }) {
         </Card>
       ) : null}
       <Card title="Events and initiatives">
-        {isLoading ? <p>Loading events...</p> : events.length === 0 ? <p>No events have been created yet.</p> : (
+        {isLoading ? <p>Loading events...</p> : events.length === 0 ? <p>{debouncedSearch ? `No events match “${debouncedSearch}”.` : 'No events have been created yet.'}</p> : (
           <div className="data-table-wrap">
             <table className="data-table"><thead><tr><th>Event</th><th>Type</th><th>Dates</th><th>Status</th><th>Tasks / Volunteers</th><th>Manage</th></tr></thead>
               <tbody>{events.map((event) => (
@@ -578,6 +610,9 @@ function EventsPage({ request }: { request: AdminRequester }) {
           </div>
         )}
       </Card>
+      {!error && !isLoading && (events.length > 0 || page > 1) ? (
+        <TablePagination page={page} itemCount={events.length} isLoading={isLoading} hasNextPage={hasNextPage} onPageChange={setPage} label="Event pages" />
+      ) : null}
     </PageFrame>
   )
 }
@@ -836,6 +871,12 @@ function TablePage({ title, description, buttonLabel, columns, rows }: { title: 
 }
 
 function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[]; request: AdminRequester; onOrderUpdated: (order: AdminOrder) => void }) {
+  const [visibleOrders, setVisibleOrders] = useState(orders)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(orders.length === ADMIN_LIST_PAGE_SIZE)
+  const [isLoading, setIsLoading] = useState(true)
+  const debouncedSearch = useDebouncedValue(search)
   const [activeOrderId, setActiveOrderId] = useState<number | null>(null)
   const [activeAction, setActiveAction] = useState<'ship' | 'cancel' | 'payment' | null>(null)
   const [courierReference, setCourierReference] = useState('')
@@ -845,6 +886,27 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let ignore = false
+    setIsLoading(true)
+    setError(null)
+    adminApi.getOrders(request, page, debouncedSearch)
+      .then((result) => {
+        if (!ignore) {
+          setVisibleOrders(result)
+          setHasNextPage(result.length === ADMIN_LIST_PAGE_SIZE)
+        }
+      })
+      .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
+      .finally(() => { if (!ignore) setIsLoading(false) })
+    return () => { ignore = true }
+  }, [debouncedSearch, page, request])
+
+  function applyUpdatedOrder(updatedOrder: AdminOrder) {
+    onOrderUpdated(updatedOrder)
+    setVisibleOrders((current) => current.map((order) => order.orderId === updatedOrder.orderId ? updatedOrder : order))
+  }
 
   function openOrderAction(orderId: number, action: 'ship' | 'cancel' | 'payment') {
     setActiveOrderId(orderId)
@@ -879,7 +941,7 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
     setMessage(null)
     try {
       const updatedOrder = await adminApi.updateOrderStatus(request, order.orderId, body)
-      onOrderUpdated(updatedOrder)
+      applyUpdatedOrder(updatedOrder)
       setActiveOrderId(null)
       setActiveAction(null)
       setMessage(`Order ${order.orderNumber} is now ${updatedOrder.statusLabel}.`)
@@ -900,7 +962,7 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
         amount: order.totalCents / 100,
         ...(reference ? { reference } : {}),
       })
-      onOrderUpdated(updatedOrder)
+      applyUpdatedOrder(updatedOrder)
       setActiveOrderId(null)
       setActiveAction(null)
       setMessage(`Payment for order ${order.orderNumber} has been recorded.`)
@@ -920,10 +982,11 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
 
   return (
     <PageFrame title="Every order, accounted for." description="Record received payments and update fulfillment one step at a time." buttonLabel="Orders">
+      <SearchField label="Search orders" value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Order number, customer, recipient or phone" />
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
       {message ? <p className="success-message" role="status">{message}</p> : null}
       <Card>
-        {orders.length === 0 ? <p>No orders to display.</p> : (
+        {isLoading ? <p>Loading orders...</p> : visibleOrders.length === 0 ? <p>{debouncedSearch ? `No orders match “${debouncedSearch}”.` : 'No orders to display.'}</p> : (
           <div className="data-table-wrap">
             <table className="data-table orders-table">
               <thead>
@@ -932,7 +995,7 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
+                {visibleOrders.map((order) => {
                   const action = nextStatus(order.status)
                   const canCancel = ['Pending payment', 'Confirmed', 'Packed'].includes(order.status)
                   const isActive = activeOrderId === order.orderId
@@ -986,6 +1049,9 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
           </div>
         )}
       </Card>
+      {!error && !isLoading && (visibleOrders.length > 0 || page > 1) ? (
+        <TablePagination page={page} itemCount={visibleOrders.length} isLoading={isLoading} hasNextPage={hasNextPage} onPageChange={setPage} label="Order pages" />
+      ) : null}
     </PageFrame>
   )
 }
@@ -994,7 +1060,16 @@ function DonationPledgesPage({ request }: { request: AdminRequester }) {
   const [pledges, setPledges] = useState<AdminDonationPledge[]>([])
   const [page, setPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
+  const [activePledgeId, setActivePledgeId] = useState<number | null>(null)
+  const [activeAction, setActiveAction] = useState<'decline' | 'receive' | null>(null)
+  const [stockItems, setStockItems] = useState<AdminStockItem[] | null>(null)
+  const [isLoadingStockItems, setIsLoadingStockItems] = useState(false)
+  const [savingPledgeId, setSavingPledgeId] = useState<number | null>(null)
+  const [declineReason, setDeclineReason] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -1002,7 +1077,7 @@ function DonationPledgesPage({ request }: { request: AdminRequester }) {
     setIsLoading(true)
     setError(null)
     setHasNextPage(false)
-    adminApi.getDonationPledges(request, page)
+    adminApi.getDonationPledges(request, page, debouncedSearch)
       .then((result) => {
         if (!ignore) {
           setPledges(result)
@@ -1012,26 +1087,137 @@ function DonationPledgesPage({ request }: { request: AdminRequester }) {
       .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
       .finally(() => { if (!ignore) setIsLoading(false) })
     return () => { ignore = true }
-  }, [page, request])
+  }, [debouncedSearch, page, request])
+
+  async function changePledgeStatus(pledge: AdminDonationPledge, update: AdminDonationPledgeStatusUpdate) {
+    setSavingPledgeId(pledge.pledgeId)
+    setError(null)
+    setMessage(null)
+    try {
+      const updatedPledge = await adminApi.updateDonationPledgeStatus(request, pledge.pledgeId, update)
+      setPledges((current) => current.map((item) => item.pledgeId === updatedPledge.pledgeId ? updatedPledge : item))
+      setActivePledgeId(null)
+      setActiveAction(null)
+      setMessage(`Donation ${pledge.referenceNumber} is now ${updatedPledge.status}.`)
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, 'Unable to update donation status.'))
+    } finally {
+      setSavingPledgeId(null)
+    }
+  }
+
+  async function openReceiveForm(pledge: AdminDonationPledge) {
+    setActivePledgeId(pledge.pledgeId)
+    setActiveAction('receive')
+    setError(null)
+    setMessage(null)
+    if (pledge.category.toLowerCase() === 'monetary' || stockItems !== null) return
+
+    setIsLoadingStockItems(true)
+    try {
+      setStockItems(await adminApi.getStockItems(request))
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, 'Unable to load stock items.'))
+    } finally {
+      setIsLoadingStockItems(false)
+    }
+  }
+
+  async function receivePledge(event: FormEvent<HTMLFormElement>, pledge: AdminDonationPledge) {
+    event.preventDefault()
+    const values = new FormData(event.currentTarget)
+    const receiptReference = String(values.get('receiptReference') ?? '').trim()
+    const dateReceived = String(values.get('dateReceived') ?? '')
+    const optionalDetails = {
+      ...(receiptReference ? { receiptReference } : {}),
+      ...(dateReceived ? { dateReceived } : {}),
+    }
+    const update: AdminDonationPledgeReceiveUpdate = pledge.category.toLowerCase() === 'monetary'
+      ? { type: 'Monetary', amount: Number(values.get('amount')), ...optionalDetails }
+      : {
+          type: 'Goods',
+          stockItemId: Number(values.get('stockItemId')),
+          quantity: Number(values.get('quantity')),
+          ...optionalDetails,
+        }
+
+    setSavingPledgeId(pledge.pledgeId)
+    setError(null)
+    setMessage(null)
+    try {
+      const result = await adminApi.receiveDonationPledge(request, pledge.pledgeId, update)
+      setPledges((current) => current.map((item) => item.pledgeId === result.pledge.pledgeId ? result.pledge : item))
+      setActivePledgeId(null)
+      setActiveAction(null)
+      setMessage(`Donation ${pledge.referenceNumber} has been recorded as received.`)
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, 'Unable to record this donation as received.'))
+    } finally {
+      setSavingPledgeId(null)
+    }
+  }
 
   return (
     <PageFrame title="Coordinate every contribution." description="Donation pledges submitted through the public website." buttonLabel="Donations">
+      <SearchField label="Search donations" value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Donor name, email, reference or phone" />
+      {error ? <p className="auth-error" role="alert">{error}</p> : null}
+      {message ? <p className="success-message" role="status">{message}</p> : null}
       <Card title="Donation pledges">
-        {error ? <p className="auth-error" role="alert">Unable to load donation pledges: {error}</p> : isLoading ? <p>Loading donation pledges...</p> : pledges.length === 0 ? <p>{page === 1 ? 'No donation pledges have been submitted yet.' : 'No more donation pledges are available.'}</p> : (
-          <DataTable
-            columns={['Reference', 'Submitted', 'Donor', 'Contact', 'Event', 'Type', 'Description', 'Estimated value', 'Status']}
-            rows={pledges.map((pledge) => [
-              pledge.referenceNumber,
-              new Date(pledge.submittedAt).toLocaleDateString(),
-              pledge.fullName,
-              `${pledge.email} / ${pledge.phone}`,
-              pledge.initiative?.title ?? 'General donation',
-              pledge.category,
-              pledge.description,
-              pledge.estimatedValue ?? '—',
-              pledge.status,
-            ])}
-          />
+        {isLoading ? <p>Loading donation pledges...</p> : pledges.length === 0 ? <p>{debouncedSearch ? `No donations match “${debouncedSearch}”.` : page === 1 ? 'No donation pledges have been submitted yet.' : 'No more donation pledges are available.'}</p> : (
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <thead><tr>{['Reference', 'Submitted', 'Donor', 'Contact', 'Event', 'Type', 'Description', 'Estimated value', 'Status', 'Manage'].map((column) => <th key={column}>{column}</th>)}</tr></thead>
+              <tbody>{pledges.map((pledge) => {
+                const isActive = activePledgeId === pledge.pledgeId
+                const isSaving = savingPledgeId === pledge.pledgeId
+                const isPending = pledge.status === 'Pending' || pledge.status === 'Submitted'
+                const isMonetary = pledge.category.toLowerCase() === 'monetary'
+                return (
+                  <tr key={pledge.pledgeId}>
+                    <td>{pledge.referenceNumber}</td>
+                    <td>{new Date(pledge.submittedAt).toLocaleDateString()}</td>
+                    <td>{pledge.fullName}</td>
+                    <td>{pledge.email}<div className="muted-copy">{pledge.phone}</div></td>
+                    <td>{pledge.initiative?.title ?? 'General donation'}</td>
+                    <td>{pledge.category}</td>
+                    <td>{pledge.description}</td>
+                    <td>{pledge.estimatedValue ?? '—'}</td>
+                    <td><span className="tag">{pledge.status}</span></td>
+                    <td>
+                      <div className="row-controls donation-actions">
+                        {!isActive && isPending ? <>
+                          <button className="table-action" type="button" disabled={savingPledgeId !== null} onClick={() => void changePledgeStatus(pledge, { status: 'Accepted' })}>Accept</button>
+                          <button className="table-action" type="button" disabled={savingPledgeId !== null} onClick={() => { setActivePledgeId(pledge.pledgeId); setActiveAction('decline'); setDeclineReason(''); setError(null); setMessage(null) }}>Decline</button>
+                        </> : null}
+                        {!isActive && pledge.status === 'Accepted' ? <button className="table-action" type="button" disabled={savingPledgeId !== null} onClick={() => void openReceiveForm(pledge)}>Record received</button> : null}
+                        {isActive && activeAction === 'decline' ? (
+                          <form className="order-status-form" onSubmit={(event) => { event.preventDefault(); void changePledgeStatus(pledge, { status: 'Declined', reason: declineReason.trim() }) }}>
+                            <label>Reason for declining<textarea maxLength={500} minLength={3} onChange={(event) => setDeclineReason(event.target.value)} required rows={2} value={declineReason} /></label>
+                            <div className="row-controls"><button className="table-action" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Confirm decline'}</button><button className="table-action" type="button" disabled={isSaving} onClick={() => { setActivePledgeId(null); setActiveAction(null) }}>Close</button></div>
+                          </form>
+                        ) : null}
+                        {isActive && activeAction === 'receive' ? (
+                          <form className="order-status-form" onSubmit={(event) => void receivePledge(event, pledge)}>
+                            {isMonetary ? (
+                              <label>Amount received (R)<input name="amount" type="number" min="0.01" step="0.01" defaultValue={pledge.estimatedValueCents ? (pledge.estimatedValueCents / 100).toFixed(2) : ''} required /></label>
+                            ) : (
+                              <>
+                                <label>Stock item<select name="stockItemId" defaultValue="" required disabled={isLoadingStockItems || !stockItems?.length}><option value="">{isLoadingStockItems ? 'Loading stock items...' : stockItems?.length ? 'Choose stock item' : 'No stock items available'}</option>{stockItems?.map((item) => <option key={item.stockItemId} value={item.stockItemId}>{item.name} · {item.quantityOnHand} {item.unit}</option>)}</select></label>
+                                <label>Quantity<input name="quantity" type="number" min="1" max="100000" defaultValue="1" required /></label>
+                              </>
+                            )}
+                            <label>Receipt reference (optional)<input name="receiptReference" maxLength={50} /></label>
+                            <label>Date received (optional)<input name="dateReceived" type="date" /></label>
+                            <div className="row-controls"><button className="table-action" type="submit" disabled={isSaving || isLoadingStockItems || (!isMonetary && !stockItems?.length)}>{isSaving ? 'Saving...' : 'Confirm received'}</button><button className="table-action" type="button" disabled={isSaving} onClick={() => { setActivePledgeId(null); setActiveAction(null) }}>Close</button></div>
+                          </form>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}</tbody>
+            </table>
+          </div>
         )}
         {!error && !isLoading && (pledges.length > 0 || page > 1) ? (
           <TablePagination
@@ -1052,6 +1238,8 @@ function VolunteerApplicationsPage({ request }: { request: AdminRequester }) {
   const [applications, setApplications] = useState<AdminVolunteerApplication[]>([])
   const [page, setPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -1060,7 +1248,7 @@ function VolunteerApplicationsPage({ request }: { request: AdminRequester }) {
     setIsLoading(true)
     setError(null)
     setHasNextPage(false)
-    adminApi.getVolunteerApplications(request, page)
+    adminApi.getVolunteerApplications(request, page, debouncedSearch)
       .then((result) => {
         if (!ignore) {
           setApplications(result)
@@ -1070,12 +1258,13 @@ function VolunteerApplicationsPage({ request }: { request: AdminRequester }) {
       .catch((requestError: Error) => { if (!ignore) setError(requestError.message) })
       .finally(() => { if (!ignore) setIsLoading(false) })
     return () => { ignore = true }
-  }, [page, request])
+  }, [debouncedSearch, page, request])
 
   return (
     <PageFrame title="Put willing hands to good work." description="Volunteer applications submitted through the public website." buttonLabel="Volunteers">
+      <SearchField label="Search volunteers" value={search} onChange={(value) => { setSearch(value); setPage(1) }} placeholder="Name, email, reference or phone" />
       <Card title="Volunteer applications">
-        {error ? <p className="auth-error" role="alert">Unable to load volunteer applications: {error}</p> : isLoading ? <p>Loading volunteer applications...</p> : applications.length === 0 ? <p>{page === 1 ? 'No volunteer applications have been submitted yet.' : 'No more volunteer applications are available.'}</p> : (
+        {error ? <p className="auth-error" role="alert">Unable to load volunteer applications: {error}</p> : isLoading ? <p>Loading volunteer applications...</p> : applications.length === 0 ? <p>{debouncedSearch ? `No volunteers match “${debouncedSearch}”.` : page === 1 ? 'No volunteer applications have been submitted yet.' : 'No more volunteer applications are available.'}</p> : (
           <DataTable
             columns={['Reference', 'Submitted', 'Volunteer', 'Phone', 'Email', 'Event', 'Task', 'Contribution', 'Availability', 'Status']}
             rows={applications.map((application) => [
@@ -1313,6 +1502,15 @@ function TablePagination({
         Next
       </button>
     </nav>
+  )
+}
+
+function SearchField({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <label className="search-field">
+      {label}
+      <input type="search" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+    </label>
   )
 }
 
