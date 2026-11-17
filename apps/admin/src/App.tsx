@@ -93,7 +93,7 @@ function App() {
           </nav>
         </div>
         <div className="sidebar-footer">
-          <a className="sidebar-aux" href="#public">View public website</a>
+          <a className="sidebar-aux" href="https://leparaalefelemoyaweb-peach.vercel.app/" target="_blank" rel="noopener noreferrer">View public website</a>
           <div className="sidebar-status">Live API · {admin.role.replace('_', ' ')}</div>
         </div>
       </aside>
