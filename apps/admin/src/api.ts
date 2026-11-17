@@ -97,6 +97,7 @@ export type AdminOrder = {
   paymentStatus: string
   customer: { name: string; email: string }
   itemCount: number
+  totalCents: number
   total: string
   courierReference: string | null
   placedAt: string
@@ -115,6 +116,11 @@ export type AdminOrderStatusUpdate = {
   courierReference?: string
   reason?: string
   refunded?: boolean
+}
+
+export type AdminOrderPaymentUpdate = {
+  amount: number
+  reference?: string
 }
 
 export type AdminDonationPledge = {
@@ -188,6 +194,8 @@ export const adminApi = {
   },
   updateOrderStatus: (request: AdminRequester, id: number, body: AdminOrderStatusUpdate) =>
     request<AdminOrder>(`/admin/orders/${id}/status`, { method: 'PATCH', body }),
+  recordOrderPayment: (request: AdminRequester, id: number, body: AdminOrderPaymentUpdate) =>
+    request<AdminOrder>(`/admin/orders/${id}/payment`, { method: 'PATCH', body }),
   getDonationPledges: async (request: AdminRequester, page: number) => {
     const route = `${adminApiRoutes.donationPledges}?page=${page}&pageSize=${ADMIN_LIST_PAGE_SIZE}&sort=newest`
     const reply = await request<AdminDonationPledge[] | { items: AdminDonationPledge[] }>(route)

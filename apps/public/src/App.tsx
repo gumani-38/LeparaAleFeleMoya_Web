@@ -900,7 +900,7 @@ function EventsPage() {
           <span className="pill">Completed ({events.filter((event) => event.status === 'Completed').length})</span>
         </div>
         <div className="event-grid">
-          {events.map((event) => (
+          {events.length === 0 ? <p className="body-copy">No events have been published yet. Please check back soon.</p> : events.map((event) => (
             <article key={event.slug} className="event-card">
               <MediaPanel variant={event.variant} label={event.title} imageUrl={event.imageUrl} fallbackImageUrl={fallbackEventImageUrl} />
               <div className="event-card-copy">
@@ -1139,8 +1139,9 @@ function VolunteerForm({ events }: { events: EventCard[] }) {
   return (
     <form className="contribution-card" onSubmit={handleSubmit}>
       <h2>Volunteer application</h2>
+      {events.length === 0 ? <p className="body-copy">There are no upcoming published events right now. Volunteer applications will open when a new event is published.</p> : null}
       <FieldShell label="Event *">
-        <select name="initiativeId" value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)} required>
+        <select name="initiativeId" value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)} disabled={events.length === 0} required>
           <option value="">Choose an upcoming event</option>
           {events.map((event) => <option key={event.eventId} value={event.eventId}>{event.title}</option>)}
         </select>

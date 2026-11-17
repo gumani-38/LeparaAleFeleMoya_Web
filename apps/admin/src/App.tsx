@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { apiErrorMessage } from '../../../shared/api-client'
 import { ADMIN_LIST_PAGE_SIZE, AdminDashboardResponse, AdminDonationPledge, AdminInitiative, AdminInitiativeTask, AdminInitiativeType, AdminOrder, AdminOrderStatus, AdminProduct, AdminProductCategory, AdminProductVariant, AdminRequester, AdminVolunteerApplication, adminApi } from './api'
 import { useAdminAuth } from './AuthContext'
 
@@ -504,12 +505,31 @@ function EventsPage({ request }: { request: AdminRequester }) {
   async function changeStatus(event: AdminInitiative, status: AdminInitiative['status']) {
     setError(null)
     setMessage(null)
+    if (status === 'Published') {
+      const blockers: string[] = []
+      const todayInSouthAfrica = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Johannesburg',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date())
+      if (event.startDate.slice(0, 10) <= todayInSouthAfrica) {
+        blockers.push('set a start date in the future')
+      }
+      if (event.volunteersRequired && event.taskCount === 0) {
+        blockers.push('add at least one volunteer task')
+      }
+      if (blockers.length > 0) {
+        setError(`Cannot publish “${event.title}”: ${blockers.join(' and ')}.`)
+        return
+      }
+    }
     try {
       await adminApi.updateInitiativeStatus(request, event.initiativeId, status)
       await refreshEvents()
       setMessage(`“${event.title}” is now ${status}.`)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to change event status.')
+      setError(apiErrorMessage(requestError, 'Unable to change event status.'))
     }
   }
 
@@ -817,27 +837,39 @@ function TablePage({ title, description, buttonLabel, columns, rows }: { title: 
 
 function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[]; request: AdminRequester; onOrderUpdated: (order: AdminOrder) => void }) {
   const [activeOrderId, setActiveOrderId] = useState<number | null>(null)
-  const [activeAction, setActiveAction] = useState<'ship' | 'cancel' | null>(null)
+  const [activeAction, setActiveAction] = useState<'ship' | 'cancel' | 'payment' | null>(null)
   const [courierReference, setCourierReference] = useState('')
   const [cancelReason, setCancelReason] = useState('')
+  const [paymentReference, setPaymentReference] = useState('')
   const [refunded, setRefunded] = useState(false)
   const [savingOrderId, setSavingOrderId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
-  function openOrderAction(orderId: number, action: 'ship' | 'cancel') {
+  function openOrderAction(orderId: number, action: 'ship' | 'cancel' | 'payment') {
     setActiveOrderId(orderId)
     setActiveAction(action)
     setCourierReference('')
     setCancelReason('')
+    setPaymentReference('')
     setRefunded(false)
     setError(null)
     setMessage(null)
   }
 
   async function changeOrderStatus(order: AdminOrder, status: AdminOrderStatus) {
+    const trimmedCourierReference = courierReference.trim()
+    if (status === 'Shipped' && (
+      trimmedCourierReference.length < 3
+      || trimmedCourierReference.length > 60
+      || !/^[\p{L}\p{N}][\p{L}\p{N} .#:/-]*$/u.test(trimmedCourierReference)
+    )) {
+      setError('Enter a courier reference 3–60 characters long. Use letters, numbers, spaces, or . # : / -.')
+      return
+    }
+
     const body = status === 'Shipped'
-      ? { status, courierReference: courierReference.trim() }
+      ? { status, courierReference: trimmedCourierReference }
       : status === 'Cancelled'
         ? { status, reason: cancelReason.trim(), ...(order.paymentStatus === 'Paid' ? { refunded } : {}) }
         : { status }
@@ -852,7 +884,28 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
       setActiveAction(null)
       setMessage(`Order ${order.orderNumber} is now ${updatedOrder.statusLabel}.`)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to update order status.')
+      setError(apiErrorMessage(requestError, 'Unable to update order status.'))
+    } finally {
+      setSavingOrderId(null)
+    }
+  }
+
+  async function recordPayment(order: AdminOrder) {
+    setSavingOrderId(order.orderId)
+    setError(null)
+    setMessage(null)
+    try {
+      const reference = paymentReference.trim()
+      const updatedOrder = await adminApi.recordOrderPayment(request, order.orderId, {
+        amount: order.totalCents / 100,
+        ...(reference ? { reference } : {}),
+      })
+      onOrderUpdated(updatedOrder)
+      setActiveOrderId(null)
+      setActiveAction(null)
+      setMessage(`Payment for order ${order.orderNumber} has been recorded.`)
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, 'Unable to record this payment.'))
     } finally {
       setSavingOrderId(null)
     }
@@ -866,7 +919,7 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
   }
 
   return (
-    <PageFrame title="Every order, accounted for." description="Update fulfillment one step at a time. Payment status is managed separately." buttonLabel="Orders">
+    <PageFrame title="Every order, accounted for." description="Record received payments and update fulfillment one step at a time." buttonLabel="Orders">
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
       {message ? <p className="success-message" role="status">{message}</p> : null}
       <Card>
@@ -890,7 +943,10 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
                       <td>{order.customer.name}</td>
                       <td>{new Date(order.placedAt).toLocaleDateString()}</td>
                       <td>{order.itemCount} / {order.total}</td>
-                      <td>{order.paymentStatus}</td>
+                      <td>
+                        {order.paymentStatus}
+                        {!isActive && order.paymentStatus === 'Unpaid' ? <div><button className="table-action" type="button" disabled={savingOrderId !== null} onClick={() => openOrderAction(order.orderId, 'payment')}>Record payment</button></div> : null}
+                      </td>
                       <td>
                         <span className="tag">{order.statusLabel}</span>
                         {order.courierReference ? <div className="muted-copy">Tracking: {order.courierReference}</div> : null}
@@ -900,9 +956,17 @@ function OrdersPage({ orders, request, onOrderUpdated }: { orders: AdminOrder[];
                           {!isActive && action ? <button className="table-action" type="button" disabled={savingOrderId !== null} onClick={() => action.status === 'Shipped' ? openOrderAction(order.orderId, 'ship') : void changeOrderStatus(order, action.status)}>{action.label}</button> : null}
                           {!isActive && canCancel ? <button className="table-action" type="button" disabled={savingOrderId !== null} onClick={() => openOrderAction(order.orderId, 'cancel')}>Cancel</button> : null}
                           {isActive && activeAction === 'ship' ? (
-                            <form className="order-status-form" onSubmit={(event) => { event.preventDefault(); void changeOrderStatus(order, 'Shipped') }}>
-                              <label>Courier reference<input autoComplete="off" maxLength={60} minLength={3} onChange={(event) => setCourierReference(event.target.value)} required value={courierReference} /></label>
+                            <form className="order-status-form" noValidate onSubmit={(event) => { event.preventDefault(); void changeOrderStatus(order, 'Shipped') }}>
+                              <label>Courier reference<input autoComplete="off" maxLength={60} minLength={3} onChange={(event) => { setCourierReference(event.target.value); setError(null) }} placeholder="e.g. TCG123456789" required value={courierReference} /></label>
+                              <p className="muted-copy">Required: 3–60 characters; use letters, numbers, spaces, or . # : / -.</p>
                               <div className="row-controls"><button className="table-action" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Confirm shipment'}</button><button className="table-action" type="button" disabled={isSaving} onClick={() => { setActiveOrderId(null); setActiveAction(null) }}>Close</button></div>
+                            </form>
+                          ) : null}
+                          {isActive && activeAction === 'payment' ? (
+                            <form className="order-status-form" onSubmit={(event) => { event.preventDefault(); void recordPayment(order) }}>
+                              <p>Confirm receipt of {order.total} before recording payment.</p>
+                              <label>Payment reference (optional)<input autoComplete="off" maxLength={100} minLength={2} onChange={(event) => setPaymentReference(event.target.value)} placeholder={`Defaults to ${order.orderNumber}`} value={paymentReference} /></label>
+                              <div className="row-controls"><button className="table-action" type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : 'Confirm payment received'}</button><button className="table-action" type="button" disabled={isSaving} onClick={() => { setActiveOrderId(null); setActiveAction(null) }}>Close</button></div>
                             </form>
                           ) : null}
                           {isActive && activeAction === 'cancel' ? (

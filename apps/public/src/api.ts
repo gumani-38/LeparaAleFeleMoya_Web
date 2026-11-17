@@ -73,7 +73,7 @@ type ApiInitiative = {
 
 export const publicApiRoutes = {
   products: '/products',
-  initiatives: '/initiatives',
+  initiatives: '/initiatives?phase=all&pageSize=50',
   product: (productId: number) => `/products/${productId}`,
   account: '/me',
   accountProfile: '/me',
@@ -139,8 +139,8 @@ export const publicApi = {
   routes: publicApiRoutes,
   async getBootstrap(): Promise<PublicBootstrapResponse> {
     const [products, events] = await Promise.all([
-      apiRequest<ApiProduct[]>('/products'),
-      apiRequest<ApiInitiative[]>('/initiatives'),
+      apiRequest<ApiProduct[]>(publicApiRoutes.products),
+      apiRequest<ApiInitiative[]>(publicApiRoutes.initiatives),
     ])
     return {
       products: products.map(mapProduct),
