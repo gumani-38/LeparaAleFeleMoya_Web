@@ -45,8 +45,6 @@ const navItems = [
 const CartContext = createContext<CartContextValue | null>(null)
 const SiteDataContext = createContext<PublicBootstrapResponse | null>(null)
 
-const fallbackEventImageUrl = 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=1200&h=900&fit=crop&auto=format&q=85'
-
 function App() {
   const [siteData, setSiteData] = useState<PublicBootstrapResponse | null>(null)
   const [siteDataError, setSiteDataError] = useState<string | null>(null)
@@ -933,7 +931,7 @@ function EventsPage() {
               ? <p className="body-copy">No {selectedStatus.toLowerCase()} events are available.</p>
               : filteredEvents.map((event) => (
             <article key={event.slug} className="event-card">
-              <MediaPanel variant={event.variant} label={event.title} imageUrl={event.imageUrl} fallbackImageUrl={fallbackEventImageUrl} />
+              <MediaPanel variant={event.variant} label={event.title} imageUrl={event.imageUrl} emptyMessage="No image available" />
               <div className="event-card-copy">
                 <span className={`pill${event.status === 'Upcoming' ? ' pill-dark' : ''}`}>{event.status}</span>
                 <h2>{event.title}</h2>
@@ -974,7 +972,7 @@ function EventDetailPage() {
         <h1>{event.title}</h1>
         <div className="event-detail-grid">
           <div>
-            <MediaPanel variant={event.variant} label={event.title} imageUrl={event.imageUrl} fallbackImageUrl={fallbackEventImageUrl} />
+            <MediaPanel variant={event.variant} label={event.title} imageUrl={event.imageUrl} emptyMessage="No image available" />
             <h2>Practical care. Shared with dignity.</h2>
             <p className="body-copy">Join us for a morning of sorting clothing, preparing bundles and welcoming neighbors. Bring clean, wearable clothing or blankets. You can also give your time; no previous volunteering experience is needed.</p>
             <div className="divider" />
@@ -1576,6 +1574,7 @@ function MediaPanel({
   label,
   imageUrl,
   fallbackImageUrl,
+  emptyMessage,
   tall = false,
   compact = false,
   loading = 'lazy',
@@ -1584,6 +1583,7 @@ function MediaPanel({
   label: string
   imageUrl?: string | null
   fallbackImageUrl?: string
+  emptyMessage?: string
   tall?: boolean
   compact?: boolean
   loading?: 'eager' | 'lazy'
@@ -1595,7 +1595,7 @@ function MediaPanel({
   }, [fallbackImageUrl, imageUrl])
 
   return (
-    <div className={`media-panel ${variant}${displayImageUrl ? ' media-has-image' : ''}${tall ? ' media-tall' : ''}${compact ? ' media-compact' : ''}`} aria-label={label}>
+    <div className={`media-panel ${variant}${displayImageUrl ? ' media-has-image' : ''}${!displayImageUrl && emptyMessage ? ' media-empty' : ''}${tall ? ' media-tall' : ''}${compact ? ' media-compact' : ''}`} aria-label={label}>
       {displayImageUrl ? (
         <img
           className="media-image"
@@ -1605,8 +1605,8 @@ function MediaPanel({
           decoding="async"
           onError={() => setDisplayImageUrl((currentUrl) => currentUrl === fallbackImageUrl ? null : fallbackImageUrl ?? null)}
         />
-      ) : <div className="media-sheen" />}
-      {!displayImageUrl ? <span className="media-label">{label}</span> : null}
+      ) : emptyMessage ? <span className="media-empty-message">{emptyMessage}</span> : <div className="media-sheen" />}
+      {!displayImageUrl && !emptyMessage ? <span className="media-label">{label}</span> : null}
     </div>
   )
 }
