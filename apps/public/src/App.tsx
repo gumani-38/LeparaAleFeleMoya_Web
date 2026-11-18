@@ -405,6 +405,11 @@ function HomePage() {
 
 function ShopPage() {
   const { products } = useSiteData()
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const categories = [...new Set(products.map((product) => product.categoryName))]
+  const filteredProducts = selectedCategory
+    ? products.filter((product) => product.categoryName === selectedCategory)
+    : products
 
   return (
     <div className="page-stack">
@@ -418,15 +423,27 @@ function ShopPage() {
           <div className="sort-copy">Sort: Featured</div>
         </div>
         <div className="filter-row">
-          <span className="pill pill-dark">All products ({products.length})</span>
-          {[...new Set(products.map((product) => product.categoryName))].map((category) => <span className="pill" key={category}>{category}</span>)}
+          <button className={`pill filter-button${selectedCategory === null ? ' pill-dark' : ''}`} type="button" aria-pressed={selectedCategory === null} onClick={() => setSelectedCategory(null)}>
+            All products ({products.length})
+          </button>
+          {categories.map((category) => (
+            <button
+              className={`pill filter-button${selectedCategory === category ? ' pill-dark' : ''}`}
+              key={category}
+              type="button"
+              aria-pressed={selectedCategory === category}
+              onClick={() => setSelectedCategory(category)}
+            >
+              {category}
+            </button>
+          ))}
         </div>
       </section>
 
       <section className="product-grid section-block no-top-border">
-        {products.map((product) => (
-          <ProductCard key={product.slug} product={product} />
-        ))}
+        {filteredProducts.length === 0
+          ? <p className="body-copy">No products are available in this category.</p>
+          : filteredProducts.map((product) => <ProductCard key={product.slug} product={product} />)}
       </section>
 
       <section className="two-column-copy section-block">
@@ -887,6 +904,10 @@ function VerifyPage() {
 
 function EventsPage() {
   const { events } = useSiteData()
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'Upcoming' | 'Completed'>('all')
+  const filteredEvents = selectedStatus === 'all'
+    ? events
+    : events.filter((event) => event.status === selectedStatus)
 
   return (
     <div className="page-stack">
@@ -895,12 +916,22 @@ function EventsPage() {
         <h1>Come together. Do something good.</h1>
         <p className="lead-copy">Find an upcoming community event or read about past activities.</p>
         <div className="filter-row">
-          <span className="pill pill-dark">All events ({events.length})</span>
-          <span className="pill">Upcoming ({events.filter((event) => event.status === 'Upcoming').length})</span>
-          <span className="pill">Completed ({events.filter((event) => event.status === 'Completed').length})</span>
+          <button className={`pill filter-button${selectedStatus === 'all' ? ' pill-dark' : ''}`} type="button" aria-pressed={selectedStatus === 'all'} onClick={() => setSelectedStatus('all')}>
+            All events ({events.length})
+          </button>
+          <button className={`pill filter-button${selectedStatus === 'Upcoming' ? ' pill-dark' : ''}`} type="button" aria-pressed={selectedStatus === 'Upcoming'} onClick={() => setSelectedStatus('Upcoming')}>
+            Upcoming ({events.filter((event) => event.status === 'Upcoming').length})
+          </button>
+          <button className={`pill filter-button${selectedStatus === 'Completed' ? ' pill-dark' : ''}`} type="button" aria-pressed={selectedStatus === 'Completed'} onClick={() => setSelectedStatus('Completed')}>
+            Completed ({events.filter((event) => event.status === 'Completed').length})
+          </button>
         </div>
         <div className="event-grid">
-          {events.length === 0 ? <p className="body-copy">No events have been published yet. Please check back soon.</p> : events.map((event) => (
+          {events.length === 0
+            ? <p className="body-copy">No events have been published yet. Please check back soon.</p>
+            : filteredEvents.length === 0
+              ? <p className="body-copy">No {selectedStatus.toLowerCase()} events are available.</p>
+              : filteredEvents.map((event) => (
             <article key={event.slug} className="event-card">
               <MediaPanel variant={event.variant} label={event.title} imageUrl={event.imageUrl} fallbackImageUrl={fallbackEventImageUrl} />
               <div className="event-card-copy">
