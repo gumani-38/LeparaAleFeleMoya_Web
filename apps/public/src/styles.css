@@ -1,8 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
-
 :root {
   color-scheme: light;
-  font-family: 'Manrope', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #fff;
   color: #1a1a1a;
   font-synthesis: none;
@@ -72,7 +70,7 @@ textarea {
 .compact-meta,
 .sort-copy,
 .timeline-meta {
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: inherit;
 }
 
 .top-bar {
@@ -1167,6 +1165,347 @@ textarea {
   font-size: 0.72rem;
 }
 
+.about-page {
+  padding: clamp(1rem, 3vw, 2rem);
+  background: #f7f6f1;
+}
+
+.about-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.8fr);
+  align-items: center;
+  min-height: 25rem;
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  overflow: hidden;
+  border-radius: 1.4rem;
+  background: #183f35;
+  color: #fffaf1;
+}
+
+.about-hero::before {
+  position: absolute;
+  top: 4rem;
+  right: -5rem;
+  width: 20rem;
+  height: 20rem;
+  border-radius: 50%;
+  background: #245849;
+  content: "";
+}
+
+.about-hero-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.about-eyebrow,
+.about-section-eyebrow {
+  margin: 0 0 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.about-eyebrow {
+  display: flex;
+  align-items: center;
+  color: #e9e9dc;
+}
+
+.about-brand-mark {
+  display: inline-grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin-right: 0.6rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5bd8d;
+  color: #183f35;
+  letter-spacing: 0;
+}
+
+.about-hero h1 {
+  margin: 1.6rem 0 0.7rem;
+  font-size: clamp(2.6rem, 6vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 1.02;
+}
+
+.about-hero h1 span {
+  color: #e5bd8d;
+}
+
+.about-hero-copy > p:last-child {
+  margin: 0;
+  color: #d8e0d9;
+  font-size: 1rem;
+}
+
+.about-artwork {
+  position: relative;
+  z-index: 1;
+  min-height: 16rem;
+}
+
+.about-artwork-ring {
+  position: absolute;
+  top: 1.3rem;
+  right: 2rem;
+  width: 12rem;
+  height: 12rem;
+  border: 1px solid rgba(255, 250, 241, 0.3);
+  border-radius: 50%;
+}
+
+.about-shirt-tile,
+.about-people-tile,
+.about-heart-tile {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.12);
+}
+
+.about-shirt-tile {
+  top: 2rem;
+  right: 4rem;
+  width: 8rem;
+  height: 8rem;
+  transform: rotate(7deg);
+  border-radius: 1.5rem;
+  background: #e5bd8d;
+}
+
+.about-shirt-tile svg {
+  width: 4rem;
+  fill: #183f35;
+}
+
+.about-people-tile {
+  right: 10rem;
+  bottom: 1rem;
+  width: 9rem;
+  height: 6.4rem;
+  transform: rotate(-6deg);
+  border-radius: 1.2rem;
+  background: #b65e43;
+  color: #fffaf1;
+}
+
+.about-people-tile svg {
+  width: 3.5rem;
+  margin-top: 0.55rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.about-people-tile span {
+  margin-top: -0.2rem;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.about-heart-tile {
+  right: 1rem;
+  bottom: 1.5rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  background: #f7f1e7;
+  color: #183f35;
+  font-size: 1.2rem;
+}
+
+.about-intro {
+  max-width: 55rem;
+  padding: clamp(2rem, 5vw, 3.5rem) 0;
+}
+
+.about-section-eyebrow {
+  color: #8a6847;
+}
+
+.about-intro h2,
+.about-steps h2 {
+  margin: 0;
+  color: #1d2923;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.about-intro > p:last-child {
+  max-width: 48rem;
+  margin: 0.8rem 0 0;
+  color: #636760;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.about-steps {
+  padding: 0 0 2rem;
+}
+
+.about-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.about-sparkle {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8eadf;
+  color: #183f35;
+  font-size: 1.2rem;
+}
+
+.about-step-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.about-step-card {
+  display: flex;
+  min-height: 5rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ebe9e1;
+  border-radius: 0.95rem;
+  background: #fff;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.about-step-card:hover {
+  transform: translateY(-1px);
+  border-color: #b8c5bb;
+}
+
+.about-step-icon {
+  display: grid;
+  flex: 0 0 2.65rem;
+  height: 2.65rem;
+  margin-right: 0.8rem;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: #e5eee7;
+  color: #183f35;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.about-step-card:nth-child(even) .about-step-icon {
+  background: #f4e9dc;
+}
+
+.about-step-copy {
+  display: grid;
+  flex: 1;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.about-step-copy strong {
+  color: #202a24;
+  font-size: 0.95rem;
+}
+
+.about-step-copy > span {
+  color: #70736d;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.about-step-arrow {
+  margin-left: 0.7rem;
+  color: #676d68;
+}
+
+.about-footer-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.95rem;
+  background: #263c31;
+  color: #fffaf1;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.about-footer-card > span {
+  color: #e2b27b;
+  font-size: 1.3rem;
+}
+
+.involvement-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.involvement-choice {
+  display: grid;
+  align-content: start;
+  min-height: 13rem;
+  gap: 0.7rem;
+  padding: 1.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--paper);
+}
+
+.involvement-choice h2,
+.involvement-choice p {
+  margin: 0;
+}
+
+.involvement-choice h2 {
+  font-size: 1.35rem;
+  letter-spacing: -0.04em;
+}
+
+.involvement-choice p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.involvement-choice-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 0.4rem;
+  color: #183f35;
+  font-weight: 700;
+}
+
+.single-form-layout {
+  max-width: 48rem;
+  margin-top: 1.5rem;
+}
+
+.single-form-layout .contribution-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: #fff;
+}
+
 @media (max-width: 980px) {
   .site-shell {
     width: 100%;
@@ -1374,6 +1713,19 @@ textarea {
 
   .home-cta .button {
     width: 100%;
+  }
+
+  .about-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .about-artwork {
+    min-height: 14rem;
+  }
+
+  .involvement-choices {
+    grid-template-columns: 1fr;
   }
 
   .site-footer {

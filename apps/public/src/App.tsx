@@ -38,6 +38,7 @@ const navItems = [
   { label: 'Home', to: '/' },
   { label: 'Shop', to: '/shop' },
   { label: 'Events', to: '/events' },
+  { label: 'About', to: '/about' },
   { label: 'Get involved', to: '/get-involved' },
   { label: 'Account', to: '/account/orders' },
 ]
@@ -196,7 +197,10 @@ function App() {
             <Route path="account/orders" element={<OrdersPage />} />
             <Route path="events" element={<EventsPage />} />
             <Route path="events/:slug" element={<EventDetailPage />} />
+            <Route path="about" element={<AboutPage />} />
             <Route path="get-involved" element={<GetInvolvedPage />} />
+            <Route path="donate" element={<DonationPage />} />
+            <Route path="volunteer" element={<VolunteerPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -384,7 +388,7 @@ function HomePage() {
           <p className="body-copy compact-meta">{upcomingEvent ? `${upcomingEvent.time} · ${upcomingEvent.location}` : 'Find an opportunity to get involved.'}</p>
           <div className="button-row">
             {upcomingEvent ? <Link className="button button-dark" to={`/events/${upcomingEvent.slug}`}>Explore the event</Link> : null}
-            <Link className="button" to="/get-involved">Volunteer</Link>
+            <Link className="button" to="/volunteer">Volunteer</Link>
           </div>
         </div>
       </section>
@@ -395,7 +399,7 @@ function HomePage() {
           <h2>There is more than one way to give.</h2>
           <p className="body-copy inverse-copy">Explore donations or volunteer roles, then choose how you want to add your support.</p>
         </div>
-        <Link className="button button-light" to="/get-involved">Decide how to volunteer</Link>
+        <Link className="button button-light" to="/get-involved">Decide how to help</Link>
       </section>
     </div>
   )
@@ -949,7 +953,7 @@ function EventsPage() {
       <section className="section-block two-column-banner">
         <h2>Can't attend? You can still contribute.</h2>
         <div className="banner-action">
-          <Link className="button" to="/get-involved">Make a donation</Link>
+          <Link className="button" to="/donate">Make a donation</Link>
         </div>
       </section>
     </div>
@@ -991,8 +995,8 @@ function EventDetailPage() {
             <div className="divider" />
             <p className="event-info-line strong-line">{event.location}</p>
             <p className="body-copy small-copy">{event.location}</p>
-            <Link className="button button-dark full-width" to="/get-involved">Volunteer for this event</Link>
-            <Link className="button full-width" to="/get-involved">Donate to this event</Link>
+            <Link className="button button-dark full-width" to="/volunteer">Volunteer for this event</Link>
+            <Link className="button full-width" to="/donate">Donate to this event</Link>
             <p className="body-copy small-copy">Requests are reviewed by the team before confirmation.</p>
           </aside>
         </div>
@@ -1001,7 +1005,104 @@ function EventDetailPage() {
   )
 }
 
+function AboutPage() {
+  const nextSteps = [
+    { title: 'Explore events', description: 'See what is happening in the community.', to: '/events', icon: '01' },
+    { title: 'Make a donation', description: 'Offer goods or a contribution to an initiative.', to: '/donate', icon: '02' },
+    { title: 'Volunteer', description: 'Share your time and skills.', to: '/volunteer', icon: '03' },
+    { title: 'Shop with purpose', description: 'Browse the everyday collection.', to: '/shop', icon: '04' },
+  ]
+
+  return (
+    <div className="about-page">
+      <section className="about-hero">
+        <div className="about-hero-copy">
+          <p className="about-eyebrow"><span className="about-brand-mark" aria-hidden="true">♥</span> About the organization</p>
+          <h1>Wear purpose.<br /><span>Share possibility.</span></h1>
+          <p>Clothing, community, and everyday acts of care.</p>
+        </div>
+        <div className="about-artwork" aria-hidden="true">
+          <div className="about-artwork-ring" />
+          <div className="about-shirt-tile">
+            <svg viewBox="0 0 64 64" role="presentation">
+              <path d="m22 12-13 8 6 12 7-4v24h24V28l7 4 6-12-13-8c-2 5-6 8-12 8s-10-3-12-8Z" />
+            </svg>
+          </div>
+          <div className="about-people-tile">
+            <svg viewBox="0 0 64 36" role="presentation">
+              <circle cx="22" cy="10" r="7" />
+              <circle cx="43" cy="10" r="7" />
+              <path d="M7 34c0-10 5-16 15-16s15 6 15 16M28 34c0-10 5-16 15-16s14 6 14 16" />
+            </svg>
+            <span>Community</span>
+          </div>
+          <div className="about-heart-tile">♥</div>
+        </div>
+      </section>
+
+      <section className="about-intro">
+        <p className="about-section-eyebrow">Lepara Ale Fele Moya</p>
+        <h2>Purpose in everyday moments.</h2>
+        <p>
+          Lepara Ale Fele Moya brings clothing, community, and everyday acts of care together.
+          Find community events, ways to contribute through donations or volunteering, and an
+          everyday collection made to carry that purpose with you.
+        </p>
+      </section>
+
+      <section className="about-steps">
+        <div className="about-section-heading">
+          <div>
+            <p className="about-section-eyebrow">Get involved</p>
+            <h2>Find your way to take part.</h2>
+          </div>
+          <span className="about-sparkle" aria-hidden="true">✳</span>
+        </div>
+        <div className="about-step-list">
+          {nextSteps.map((step) => (
+            <Link className="about-step-card" key={step.title} to={step.to}>
+              <span className="about-step-icon" aria-hidden="true">{step.icon}</span>
+              <span className="about-step-copy">
+                <strong>{step.title}</strong>
+                <span>{step.description}</span>
+              </span>
+              <span className="about-step-arrow" aria-hidden="true">→</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <div className="about-footer-card"><span aria-hidden="true">✦</span>Small acts of care can help bring a community closer.</div>
+    </div>
+  )
+}
+
 function GetInvolvedPage() {
+  return (
+    <div className="page-stack">
+      <section className="section-block compact-section">
+        <p className="eyebrow">Get involved / Choose your contribution</p>
+        <h1>Give in your own way.</h1>
+        <p className="lead-copy">Offer a donation or share your time and skills. Choose a path to get started.</p>
+        <div className="involvement-choices">
+          <Link className="involvement-choice" to="/donate">
+            <span className="about-section-eyebrow">Give goods or support</span>
+            <h2>Make a donation</h2>
+            <p>Tell us what you would like to contribute and our team will be in touch.</p>
+            <span className="involvement-choice-link">Start a donation <span aria-hidden="true">→</span></span>
+          </Link>
+          <Link className="involvement-choice" to="/volunteer">
+            <span className="about-section-eyebrow">Share your time</span>
+            <h2>Become a volunteer</h2>
+            <p>Find an upcoming event and let us know how you would like to help.</p>
+            <span className="involvement-choice-link">Apply to volunteer <span aria-hidden="true">→</span></span>
+          </Link>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function DonationPage() {
   const { events } = useSiteData()
   const [donationCategories, setDonationCategories] = useState<{ value: string; label: string }[]>([])
   const [optionsError, setOptionsError] = useState<string | null>(null)
@@ -1024,12 +1125,29 @@ function GetInvolvedPage() {
   return (
     <div className="page-stack">
       <section className="section-block compact-section">
-        <p className="eyebrow">Get involved / Choose your contribution</p>
-        <h1>Give in your own way.</h1>
-        <p className="lead-copy">Submit a donation pledge or volunteer application. The API returns a reference number for each request.</p>
+        <p className="eyebrow">Get involved / Donation</p>
+        <h1>Make a donation.</h1>
+        <p className="lead-copy">Tell us about the goods or support you would like to offer. Our team will be in touch about your pledge.</p>
         {optionsError ? <p className="api-error" role="alert">Unable to load contribution choices: {optionsError}</p> : null}
-        <div className="dual-form-grid">
+        <div className="single-form-layout">
           <DonationForm events={upcomingEvents} categories={donationCategories} />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function VolunteerPage() {
+  const { events } = useSiteData()
+  const upcomingEvents = events.filter((event) => event.status === 'Upcoming')
+
+  return (
+    <div className="page-stack">
+      <section className="section-block compact-section">
+        <p className="eyebrow">Get involved / Volunteering</p>
+        <h1>Share your time.</h1>
+        <p className="lead-copy">Choose an upcoming event and tell us how you would like to support the community.</p>
+        <div className="single-form-layout">
           <VolunteerForm events={upcomingEvents} />
         </div>
       </section>
