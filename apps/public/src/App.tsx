@@ -1012,6 +1012,12 @@ function AboutPage() {
     { title: 'Volunteer', description: 'Share your time and skills.', to: '/volunteer', icon: '03' },
     { title: 'Shop with purpose', description: 'Browse the everyday collection.', to: '/shop', icon: '04' },
   ]
+  const communityInitiatives = [
+    { title: 'Clothing donations', description: 'Sharing garments with people who need practical support.', icon: '✦' },
+    { title: 'Sanitary pad drives', description: 'Helping girls and women access essential period supplies.', icon: '♡' },
+    { title: 'School talks', description: 'Encouraging young people through conversations at school.', icon: '◎' },
+    { title: 'Winter feeding', description: 'Offering food and care during the colder months.', icon: '☼' },
+  ]
 
   return (
     <div className="about-page">
@@ -1042,13 +1048,63 @@ function AboutPage() {
 
       <section className="about-intro">
         <p className="about-section-eyebrow">Lepara Ale Fele Moya</p>
-        <h2>Purpose in everyday moments.</h2>
+        <h2>A community that helps people keep going.</h2>
         <p>
-          Lepara Ale Fele Moya brings clothing, community, and everyday acts of care together.
-          Find community events, ways to contribute through donations or volunteering, and an
-          everyday collection made to carry that purpose with you.
+          Lepara Ale Fele Moya is a community-based upliftment initiative supporting people
+          through difficult circumstances with practical help, encouragement, and the reminder
+          that they are not alone.
         </p>
       </section>
+
+      <section className="about-story" aria-label="The organization's story and mission">
+        <article className="about-story-card">
+          <p className="about-section-eyebrow">Where it began</p>
+          <h2>Rooted in Ga-Rankuwa.</h2>
+          <p>
+            Founded in Ga-Rankuwa, Pretoria, by <strong>Wilfred (Willy) Kegomoditswe
+            Thathane</strong>, the organisation grew from a simple belief: when people face hard
+            times, a caring community can help them find hope and keep moving forward.
+          </p>
+        </article>
+        <aside className="about-mission">
+          <p className="about-section-eyebrow">The mission</p>
+          <h2>Encourage people not to give up.</h2>
+          <p>
+            Every initiative is an invitation to show up for one another, volunteer, and build
+            a stronger, more caring community.
+          </p>
+        </aside>
+      </section>
+
+      <section className="about-initiatives" aria-labelledby="about-initiatives-title">
+        <p className="about-section-eyebrow">Care in action</p>
+        <h2 id="about-initiatives-title">Small acts. Meaningful support.</h2>
+        <p className="about-initiatives-intro">
+          The organisation brings its mission to life through community initiatives such as:
+        </p>
+        <div className="about-initiative-list">
+          {communityInitiatives.map((initiative) => (
+            <article className="about-initiative-card" key={initiative.title}>
+              <span className="about-initiative-icon" aria-hidden="true">{initiative.icon}</span>
+              <span className="about-initiative-copy">
+                <strong>{initiative.title}</strong>
+                <span>{initiative.description}</span>
+              </span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <aside className="about-platform">
+        <span aria-hidden="true">✦</span>
+        <div>
+          <strong>A shared place to get involved.</strong>
+          <p>
+            This website brings events, donations, and volunteering together, making it easier
+            for the organisation and community to stay connected and take part.
+          </p>
+        </div>
+      </aside>
 
       <section className="about-steps">
         <div className="about-section-heading">

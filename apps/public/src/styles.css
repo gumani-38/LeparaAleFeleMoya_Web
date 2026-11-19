@@ -1348,6 +1348,133 @@ textarea {
   line-height: 1.65;
 }
 
+.about-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 0.7fr);
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.about-story-card,
+.about-mission {
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border-radius: 1.1rem;
+}
+
+.about-story-card {
+  border: 1px solid #ebe9e1;
+  background: #fff;
+}
+
+.about-story h2,
+.about-initiatives h2 {
+  margin: 0;
+  color: #1d2923;
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+
+.about-story-card > p:last-child,
+.about-mission > p:last-child {
+  margin: 0.7rem 0 0;
+  color: #636760;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.about-story-card strong {
+  color: #202a24;
+}
+
+.about-mission {
+  background: #efe7d9;
+}
+
+.about-initiatives {
+  margin-bottom: 2rem;
+}
+
+.about-initiatives-intro {
+  margin: 0.7rem 0 1rem;
+  color: #636760;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.about-initiative-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.about-initiative-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  padding: 0.85rem;
+  border: 1px solid #ebe9e1;
+  border-radius: 0.95rem;
+  background: #fff;
+}
+
+.about-initiative-icon {
+  display: grid;
+  flex: 0 0 2.5rem;
+  height: 2.5rem;
+  margin-right: 0.75rem;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: #f4e9dc;
+  color: #183f35;
+  font-size: 1.1rem;
+}
+
+.about-initiative-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.about-initiative-copy strong {
+  color: #202a24;
+  font-size: 0.9rem;
+}
+
+.about-initiative-copy > span {
+  color: #70736d;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.about-platform {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border-radius: 0.95rem;
+  background: #263c31;
+  color: #fffaf1;
+}
+
+.about-platform > span {
+  color: #e2b27b;
+  font-size: 1.3rem;
+}
+
+.about-platform strong {
+  font-size: 0.95rem;
+}
+
+.about-platform p {
+  margin: 0.35rem 0 0;
+  color: #d8e0d9;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
 .about-steps {
   padding: 0 0 2rem;
 }
@@ -1718,6 +1845,11 @@ textarea {
   .about-hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+  }
+
+  .about-story,
+  .about-initiative-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .about-artwork {
